@@ -369,6 +369,10 @@ function migrate(database: SQLiteDatabase): void {
   // pledged_amount accounting checks, and post-seed listing by created_at.
   // Only indexes backed by concrete seed + migrate query plans.
   ensureSeedWorkflowIndexes(database);
+
+  // Query-layer indexes: composite plans for contributor/refund lookups,
+  // campaign event history pages, and soft-deleted comment lists.
+  ensureQueryLayerIndexes(database);
 }
 
 /**
@@ -388,5 +392,25 @@ export function ensureSeedWorkflowIndexes(database: SQLiteDatabase = getDb()): v
 
     CREATE INDEX IF NOT EXISTS idx_campaigns_created_at
       ON campaigns(created_at);
+  `);
+}
+
+/**
+ * Indexes used by the application query layer (campaignStore / eventHistory /
+ * getPledgesByContributor). Safe to call repeatedly (IF NOT EXISTS).
+ */
+export function ensureQueryLayerIndexes(database: SQLiteDatabase = getDb()): void {
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_pledges_campaign_contributor
+      ON pledges(campaign_id, contributor, refunded_at);
+
+    CREATE INDEX IF NOT EXISTS idx_campaign_events_campaign_timestamp
+      ON campaign_events(campaign_id, timestamp ASC, id ASC);
+
+    CREATE INDEX IF NOT EXISTS idx_campaign_comments_campaign_created
+      ON campaign_comments(campaign_id, deleted_at, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_campaign_events_source
+      ON campaign_events(json_extract(blockchain_metadata, '$.source'));
   `);
 }

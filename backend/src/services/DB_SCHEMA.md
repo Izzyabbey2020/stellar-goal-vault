@@ -71,3 +71,16 @@ All indexes use `CREATE INDEX IF NOT EXISTS` to ensure idempotence.
 - `idx_campaign_comments_campaign_id` on `campaign_comments(campaign_id)`.
 - `idx_campaign_events_campaign_id` on `campaign_events(campaign_id)`.
 - `idx_webhook_dlq_campaign_id` on `webhook_dead_letter_queue(campaign_id)`.
+
+### Query-layer composite indexes (#889)
+
+Installed by `ensureQueryLayerIndexes()` for concrete application read plans:
+
+- `idx_pledges_campaign_contributor` on `pledges(campaign_id, contributor, refunded_at)` —
+  contributor totals and refund lookups (`WHERE campaign_id AND contributor AND refunded_at IS NULL`).
+- `idx_campaign_events_campaign_timestamp` on `campaign_events(campaign_id, timestamp, id)` —
+  ordered campaign history pages.
+- `idx_campaign_comments_campaign_created` on `campaign_comments(campaign_id, deleted_at, created_at DESC)` —
+  soft-deleted comment lists per campaign.
+- `idx_campaign_events_source` on `json_extract(blockchain_metadata, '$.source')` —
+  filtering local vs soroban history events.
